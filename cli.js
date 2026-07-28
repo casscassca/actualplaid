@@ -186,8 +186,7 @@ module.exports = async (command, flags) => {
                     "yyyy-MM-dd"
                 );
 
-                const note = await actual.getNote(actualId);
-                const isInvestment = note && note.includes('#Investment');
+                const isInvestment = account.plaidAccount.type === 'investment';
 
                 if (startDate === endDate && !isInvestment) {
                     console.log("Skipping: ", account.plaidAccount.name, "because it was already imported today")
