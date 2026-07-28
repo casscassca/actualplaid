@@ -101,22 +101,17 @@ async function startLinkingPlaid() {
         throw new Error("Plaid Linking cancelled");
     }
 
-    //If running locally, open the browser to localhost.
     if (`${appConfig.APP_URL}` == 'http://localhost') {
-
         const plaidLinkLink = `http://localhost:${appConfig.APP_PORT}`;
         console.log(
             `Opening ${plaidLinkLink} to link with Plaid...\nNOTE: Please return to your CLI when completed.`
         );
         opn(plaidLinkLink);
-
-    } else { //If not running locally / needing https, let the user open it themselves.
-
+    } else {
         const plaidLinkLink = `${appConfig.APP_URL}`;
         console.log(
             `Open ${plaidLinkLink} to link with Plaid in a browser...\nNOTE: Please return to your CLI when completed.`
         );
-
     }
 
     let doneLinking = false;
@@ -177,7 +172,6 @@ module.exports = async (command, flags) => {
                         start_date: startDate,
                         end_date: endDate
                     });
-
                 }
                 return transactionsPerToken[key];
             }
@@ -192,42 +186,45 @@ module.exports = async (command, flags) => {
                     "yyyy-MM-dd"
                 );
 
-                // Check if start and end is the same day, but not same second
-                if (startDate === endDate) {
+                const note = await actual.getNote(actualId);
+                const isInvestment = note && note.includes('#Investment');
+
+                if (startDate === endDate && !isInvestment) {
                     console.log("Skipping: ", account.plaidAccount.name, "because it was already imported today")
                 } else {
-
                     console.log("Importing transactions for account: ", account.plaidAccount.name, "from ", startDate, "to", endDate)
-                    const tempStartTime = new Date();
-
-                    const transactionsResponse = await cachedTransaction(account.plaidToken, startDate);
-                    const transactionsForThisAccount = transactionsResponse.data.transactions.filter(
-                        (transaction) =>
-                            transaction.account_id === account.plaidAccount.account_id
-                    );
-
-                    // Sleep at least 2 sec to let user cancel, continue with promise
-                    const timeTookForPlaid = new Date() - tempStartTime;
-                    const timeToSleep = 2000 - timeTookForPlaid;
-                    if (timeToSleep > 0) {
-                        await new Promise((resolve) => setTimeout(resolve, timeToSleep));
-                    }
 
                     let plaidBalance = null;
-try {
-    const balanceResponse = await plaidClient.accountsBalanceGet({
-        access_token: account.plaidToken,
-        options: {
-            account_ids: [account.plaidAccount.account_id],
-        }
-    });
-    plaidBalance = balanceResponse.data.accounts[0]?.balances.current ?? null;
-    console.log("Fetched Plaid balance for", account.plaidAccount.name, ":", plaidBalance);
-} catch (e) {
-    console.warn("Could not fetch Plaid balance for", account.plaidAccount.name, "- skipping balance update:", e.message);
-}
+                    try {
+                        const balanceResponse = await plaidClient.accountsBalanceGet({
+                            access_token: account.plaidToken,
+                            options: {
+                                account_ids: [account.plaidAccount.account_id],
+                            }
+                        });
+                        plaidBalance = balanceResponse.data.accounts[0]?.balances.current ?? null;
+                        console.log("Fetched Plaid balance for", account.plaidAccount.name, ":", plaidBalance);
+                    } catch (e) {
+                        console.warn("Could not fetch Plaid balance for", account.plaidAccount.name, "- skipping balance update:", e.message);
+                    }
 
-await importPlaidTransactions(actual, actualId, account.plaidBankName, transactionsForThisAccount, plaidBalance);
+                    if (!isInvestment) {
+                        const tempStartTime = new Date();
+                        const transactionsResponse = await cachedTransaction(account.plaidToken, startDate);
+                        const transactionsForThisAccount = transactionsResponse.data.transactions.filter(
+                            (transaction) =>
+                                transaction.account_id === account.plaidAccount.account_id
+                        );
+                        const timeTookForPlaid = new Date() - tempStartTime;
+                        const timeToSleep = 2000 - timeTookForPlaid;
+                        if (timeToSleep > 0) {
+                            await new Promise((resolve) => setTimeout(resolve, timeToSleep));
+                        }
+                        await importPlaidTransactions(actual, actualId, account.plaidBankName, transactionsForThisAccount, plaidBalance);
+                    } else {
+                        await importPlaidTransactions(actual, actualId, account.plaidBankName, [], plaidBalance);
+                    }
+
                     config.set(`actualSync.${actualId}.lastImport`, new Date());
                 }
             }
@@ -239,10 +236,8 @@ await importPlaidTransactions(actual, actualId, account.plaidBankName, transacti
         }
 
     } else if (command === "setup") {
-        /** Configuration for every plaid account */
         let plaidAccounts = config.get("plaidAccounts") || {};
 
-        /** Every plaid account that has been linked to an actual account */
         const linkedToActual = Object.entries(config.get("actualSync") || {}).map(
             ([actualId, { plaidAccount }]) => { return { plaid: plaidAccount.account_id, actual: actualId } }
         )
@@ -250,7 +245,6 @@ await importPlaidTransactions(actual, actualId, account.plaidBankName, transacti
         linkedToActual.forEach((ids) => {
             delete plaidAccounts[ids.plaid];
         });
-
 
         if (Object.keys(plaidAccounts).length == 0) {
             console.log("There are no accounts linked to Plaid that are not already in Actual. Please link at least one new account to continue.")
@@ -270,7 +264,6 @@ await importPlaidTransactions(actual, actualId, account.plaidBankName, transacti
                 name: "confirm",
                 message: `Do you want to re-link your accounts or add extra?`,
                 default: false,
-
             });
 
             if (confirm) {
@@ -278,7 +271,6 @@ await importPlaidTransactions(actual, actualId, account.plaidBankName, transacti
             }
         }
 
-        // Remove accounts that are now linked again.
         linkedToActual.forEach((ids) => {
             delete plaidAccounts[ids.plaid];
         });
@@ -298,7 +290,6 @@ await importPlaidTransactions(actual, actualId, account.plaidBankName, transacti
             type: "checkbox",
             name: "accountsToSync",
             message: `Which actual accounts do you want to sync with plaid?`,
-            // Only show accounts that are not already linked
             choices: accountsInTheActualBudget.map(({ name, id }) => ({ name, value: id })).filter(({ value }) => !linkedToActual.find(({ actual }) => actual === value)),
         });
 
@@ -348,7 +339,7 @@ await importPlaidTransactions(actual, actualId, account.plaidBankName, transacti
         for (let [actualId, account] of Object.entries(syncingData)) {
             const balanceFromActual = await getBalance(actual, actualId);
             const plaidBalanceInformation = await plaidClient.accountsBalanceGet({
-                access_token: account.plaidToken, 
+                access_token: account.plaidToken,
                 options: {
                     account_ids: [account.plaidAccount.account_id],
                 }
@@ -414,7 +405,6 @@ fastify.post("/get_access_token", async (request, reply) => {
 
         accounts.forEach((account) => {
             console.log("Linked new account: ", name)
-            // TODO: Duplicate prevention
             config.set(`plaidAccounts.${account.account_id}`, {
                 account,
                 plaidToken: access_token,
