@@ -178,14 +178,16 @@ const transactionMapper = (accountId, bank) => {
 
 
 async function importPlaidTransactions(actualInstance, accountId, bank, transactions, balance) {
-    const mapped = transactions
-        .map(transactionMapper(accountId, bank))
+    const note = await actualInstance.getNote(accountId);
+    const isInvestment = note && note.includes('#Investment');
 
-    const actualResult = await actualInstance.importTransactions(
-        accountId,
-        mapped
-    );
-    console.log("Actual logs: ", actualResult);
+    if (isInvestment) {
+        console.log("Investment account detected, skipping transaction import.");
+    } else {
+        const mapped = transactions.map(transactionMapper(accountId, bank));
+        const actualResult = await actualInstance.importTransactions(accountId, mapped);
+        console.log("Actual logs: ", actualResult);
+    }
 
     if (balance !== null && balance !== undefined) {
         await actualInstance.updateAccount(accountId, { balance_current: balance });
