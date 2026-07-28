@@ -213,7 +213,21 @@ module.exports = async (command, flags) => {
                         await new Promise((resolve) => setTimeout(resolve, timeToSleep));
                     }
 
-                    await importPlaidTransactions(actual, actualId, account.plaidBankName, transactionsForThisAccount);
+                    let plaidBalance = null;
+try {
+    const balanceResponse = await plaidClient.accountsBalanceGet({
+        access_token: account.plaidToken,
+        options: {
+            account_ids: [account.plaidAccount.account_id],
+        }
+    });
+    plaidBalance = balanceResponse.data.accounts[0]?.balances.current ?? null;
+    console.log("Fetched Plaid balance for", account.plaidAccount.name, ":", plaidBalance);
+} catch (e) {
+    console.warn("Could not fetch Plaid balance for", account.plaidAccount.name, "- skipping balance update:", e.message);
+}
+
+await importPlaidTransactions(actual, actualId, account.plaidBankName, transactionsForThisAccount, plaidBalance);
                     config.set(`actualSync.${actualId}.lastImport`, new Date());
                 }
             }

@@ -177,7 +177,7 @@ const transactionMapper = (accountId, bank) => {
 }
 
 
-async function importPlaidTransactions(actualInstance, accountId, bank, transactions) {
+async function importPlaidTransactions(actualInstance, accountId, bank, transactions, balance) {
     const mapped = transactions
         .map(transactionMapper(accountId, bank))
 
@@ -185,10 +185,12 @@ async function importPlaidTransactions(actualInstance, accountId, bank, transact
         accountId,
         mapped
     );
-    console.log("Imported transactions raw data START:")
-    console.log(transactions)
-    console.log("ENV")
     console.log("Actual logs: ", actualResult);
+
+    if (balance !== null && balance !== undefined) {
+        await actualInstance.updateAccount(accountId, { balance_current: balance });
+        console.log("Updated balance_current to:", balance);
+    }
 }
 
 async function getBalance(actualInstance, accountId) {
