@@ -42,8 +42,9 @@ function getAppConfigFromEnv() {
     }
 
     // Assert that all required environment variables are set
+    const optional = ['ACTUAL_SERVER_ENCRYPTION_PASSWORD'];
     Object.entries(appConfig).forEach(([key, value]) => {
-        if (!value) {
+        if (!value && !optional.includes(key)) {
             throw new Error(`Missing environment variable: ${key}`);
         }
     })
