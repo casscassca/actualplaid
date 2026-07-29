@@ -12,13 +12,13 @@ const QUESTRADE_USERS = [
         name: 'Cass',
         envKey: 'CASS_QUESTRADE',
         tokenFile: path.join(__dirname, 'questrade-token-cass.json'),
-        accounts: { '0243': 'CAD Cass RSP' }, // last 4 of Questrade account # -> Actual account name
+        accounts: { '0243': '✓ CAD Cass RSP' }, // last 4 of Questrade account # -> Actual account name
     },
     {
         name: 'Jason',
         envKey: 'JASON_QUESTRADE',
         tokenFile: path.join(__dirname, 'questrade-token-jason.json'),
-        accounts: { '0517': 'CAD Jason RSP' },
+        accounts: { '0517': '✓ CAD Jason RSP' },
     },
 ];
 
