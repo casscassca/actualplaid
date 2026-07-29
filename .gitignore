@@ -4,3 +4,4 @@ PATTERN/
 .env
 temp_data_actual/
 *.json
+questrade-token-*.json
