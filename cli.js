@@ -201,9 +201,8 @@ module.exports = async (command, flags) => {
                                 account_ids: [account.plaidAccount.account_id],
                             }
                         });
-                        plaidBalance = balanceResponse.data.accounts[0]?.balances.current ?? null;
-                        console.log("Full account data:", JSON.stringify(balanceResponse.data.accounts[0], null, 2));
-                        console.log("Fetched Plaid balance for", account.plaidAccount.name, ":", plaidBalance);
+                        const rawBalance = balanceResponse.data.accounts[0]?.balances.current;
+                        plaidBalance = rawBalance != null ? Math.round(rawBalance * 100) : null;
                     } catch (e) {
                         console.warn("Could not fetch Plaid balance for", account.plaidAccount.name, "- skipping balance update:", e.message);
                     }
