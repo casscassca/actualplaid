@@ -60,6 +60,20 @@ Some banks require production access, and also oAuth support to be enabled. You 
 
 - If you want to keep costs down, I don't see any issues with running 2 instances of this, one set for Production (for oAuth), and one set for Development
 
+## Reconnecting a bank (ITEM_LOGIN_REQUIRED)
+
+Banks periodically drop a connection: a password change, an expired MFA token, or an expired consent window all put the Plaid Item into `ITEM_LOGIN_REQUIRED`. Imports for that bank will be skipped until you re-authenticate.
+
+Run `node index.js status` to see which connections are unhealthy, then repair one with:
+
+```
+node index.js update "TD Canada Trust"
+```
+
+This launches Plaid Link in [update mode](https://plaid.com/docs/link/update-mode/), which re-authenticates the *existing* Item. The access token does not change and no additional Plaid Item is consumed, so this does not eat into your Item limit the way re-running `setup` does. Your Actual account mappings are preserved.
+
+If the bank name is omitted, you will be given a list of connections to choose from.
+
 ## Commands
 
 
@@ -70,6 +84,8 @@ Some banks require production access, and also oAuth support to be enabled. You 
   Commands & Options
     setup            Link bank accounts with your Actual Budget accounts via Plai
     ls               List currently syncing accounts
+    status           Show the health of each linked bank connection
+    update <bank>    Re-authenticate an existing bank connection without using another Plaid Item, ex: update "TD Canada Trust"
     import           Sync bank accounts to Actual Budget
       --account, -a   The account to import, ex: --account="My Checking"
       --since, -s     The start date after which transactions should be imported. Defaults to beginning of current month, format: yyyy-MM-dd, ex: --since=2020-05-28
@@ -81,4 +97,5 @@ Some banks require production access, and also oAuth support to be enabled. You 
     --user, -u       Specify the user to load configs for
   Examples
     $ actualplaid import --account="My Checking" --since="2020-05-28"
+    $ actualplaid update "TD Canada Trust"
 ```

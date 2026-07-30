@@ -15,23 +15,51 @@
     <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
     <script type="text/javascript">
         (async function () {
-            const fetchLinkToken = async () => {
+            const fetchLinkSession = async () => {
                 const response = await fetch("/create_link_token", { method: "POST" });
-                const responseJSON = await response.json();
-                return responseJSON.link_token;
+                return response.json();
             };
+
+            const setStatus = (text) => {
+                document.getElementById("status").textContent = text;
+            };
+
+            if (document.readyState === "loading") {
+                await new Promise((resolve) =>
+                    document.addEventListener("DOMContentLoaded", resolve)
+                );
+            }
+
+            const session = await fetchLinkSession();
+            // An update mode session re-authenticates one existing bank instead
+            // of linking a new one, so no public token exchange is needed.
+            const isUpdate = session.mode === "update";
+
+            if (isUpdate) {
+                document.getElementById("heading").textContent = "Reconnect Your Bank";
+                setStatus(
+                    `${session.bank_name} needs you to log in again. Reconnecting keeps your existing link, so no data or setup is lost.`
+                );
+                document.getElementById("link-button").textContent = `Reconnect ${session.bank_name}`;
+            }
 
             const configs = {
                 // 1. Pass a new link_token to Link.
-                token: await fetchLinkToken(),
+                token: session.link_token,
                 onSuccess: async function (public_token, metadata) {
-                    // 2a. Send the public_token to your app server.
-                    // The onSuccess function is called when the user has successfully
-                    // authenticated and selected an account to use.
-                    await fetch("/get_access_token", {
-                        method: "POST",
-                        body: JSON.stringify({ public_token: public_token }),
-                    });
+                    if (isUpdate) {
+                        await fetch("/complete_update", { method: "POST" });
+                        setStatus("Reconnected. You can close this tab and return to your CLI.");
+                    } else {
+                        // 2a. Send the public_token to your app server.
+                        // The onSuccess function is called when the user has successfully
+                        // authenticated and selected an account to use.
+                        await fetch("/get_access_token", {
+                            method: "POST",
+                            body: JSON.stringify({ public_token: public_token }),
+                        });
+                        setStatus("Account linked. Link another, or return to your CLI when finished.");
+                    }
                 },
                 onExit: async function (err, metadata) {
                     // 2b. Gracefully handle the invalid link token error. A link token
@@ -41,7 +69,7 @@
                         linkHandler.destroy();
                         linkHandler = Plaid.create({
                             ...configs,
-                            token: await fetchLinkToken(),
+                            token: (await fetchLinkSession()).link_token,
                         });
                     }
                     if (err != null) {
@@ -66,10 +94,11 @@
     <main class="page">
         <div class="action-card">
             <header class="action-card__header">
-                <h1 class="primary-heading">Actual Budget Plaid Link</h1>
+                <h1 class="primary-heading"
+                    id="heading">Actual Budget Plaid Link</h1>
             </header>
             <div class="action-card__content">
-                <p>Login to each account you intend to sync with Actual Budget</p>
+                <p id="status">Login to each account you intend to sync with Actual Budget</p>
             </div>
             <footer class="action-card__footer"
                     style="display: flex; justify-content: center;">

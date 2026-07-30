@@ -9,6 +9,8 @@ const cli = meow(
   Commands & Options
     setup            Link bank accounts with your Actual Budget accounts via Plaid
     ls               List currently syncing accounts
+    status           Show the health of each linked bank connection
+    update <bank>    Re-authenticate an existing bank connection without using another Plaid Item, ex: update "TD Canada Trust"
     import           Sync bank accounts to Actual Budget
       --account, -a  The account to import, ex: --account="My Checking"
       --since, -s    The start date after which transactions should be imported. Defaults to beginning of current month, format: yyyy-MM-dd, ex: --since=2020-05-28
@@ -22,6 +24,7 @@ const cli = meow(
 
   Examples
     $ actualplaid import --account="My Checking" --since="2020-05-28"
+    $ actualplaid update "TD Canada Trust"
 `,
     {
         flags: {
@@ -41,4 +44,4 @@ const cli = meow(
     }
 );
 
-actualPlaid(cli.input[0], cli.flags);
+actualPlaid(cli.input[0], cli.flags, cli.input.slice(1).join(" "));
